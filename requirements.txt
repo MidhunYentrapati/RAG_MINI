@@ -1,0 +1,5 @@
+streamlit
+pymupdf
+faiss-cpu
+google-generativeai
+numpy
