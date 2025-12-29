@@ -1,133 +1,163 @@
-Chat with PDF using RAG & Gemini LLM
+Chat with PDF — RAG-based Q&A using Gemini
 
-A Retrieval-Augmented Generation (RAG) based application that enables users to chat with PDF documents using semantic search and LLM-based, context-grounded answers.
+A small but production-style Retrieval-Augmented Generation (RAG) system that enables users to ask questions from PDF documents and receive context-grounded answers.
 
-This project is intentionally designed to be small, clean, and impactful, demonstrating real-world GenAI system design rather than a toy demo.
+This project focuses on core RAG engineering — chunking, embeddings, retrieval, and hallucination control — without relying on heavy abstractions or black-box frameworks.
 
-Features:
+Why this project exists
 
-Upload and process PDF documents
-Intelligent text chunking with overlap
-Semantic search using vector embeddings + FAISS
-Context-grounded question answering using Gemini LLM
-Hallucination control (answers strictly from document content)
-Source page attribution for transparency
-Interactive Streamlit UI
+Most “Chat with PDF” demos:
 
+Hide logic behind frameworks
 
-System Architecture:
+Ignore real API and cost constraints
 
+Hallucinate answers confidently
+
+This project was built to:
+
+Implement RAG end-to-end from scratch
+
+Handle real-world constraints such as API quotas and cost
+
+Keep the system modular, explainable, and debuggable
+
+High-level flow
 PDF
- ↓
-PyMuPDF (Text Extraction)
- ↓
-Chunking (Overlap + Metadata)
- ↓
-Local Embeddings (SentenceTransformers)
- ↓
-FAISS Vector Store
- ↓
-Semantic Retrieval (Top-K)
- ↓
-Gemini LLM (Context-Grounded QA)
- ↓
-Streamlit UI
+ → Text Extraction (PyMuPDF)
+ → Chunking (overlap + metadata)
+ → Embeddings (local)
+ → FAISS Vector Store
+ → Top-K Semantic Retrieval
+ → Gemini LLM (context-grounded answer)
+ → Streamlit UI
 
+Tech stack
+Layer	Technology
+UI	Streamlit
+PDF Parsing	PyMuPDF
+Chunking	Custom Python logic
+Embeddings	SentenceTransformers (all-MiniLM-L6-v2)
+Vector Store	FAISS
+LLM	Google Gemini Pro
+Language	Python
+Key design decisions
+1. No LangChain or heavy abstractions
 
-Tech Stack:
+The entire pipeline is implemented using plain Python modules.
 
-UI -> Streamlit
-PDF Parsing -> PyMuPDF
-Chunking -> Custom Python logic
-Embeddings -> SentenceTransformers (all-MiniLM-L6-v2)
-Vector Store -> FAISS
-LLM -> Google Gemini Pro
-Language -> Python
- 
+This provides full control over:
 
-Project Structure
+Chunk boundaries
 
-RAG_MINI/
-│
-├── app.py                      # Streamlit app
-├── config.py                   # Configurations
-├── requirements.txt
-│
-├── rag/
-│   ├── loader.py               # PDF extraction
-│   ├── chunker.py              # Text chunking
-│   ├── embeddings.py           # Embedding generation
-│   ├── vector_store.py         # FAISS index handling
-│   ├── retriever.py            # Semantic retrieval
-│   └── qa_chain.py             # Gemini-based QA
-│
-├── vector_store/
-│   ├── faiss.index
-│   └── metadata.pkl
+Retrieval quality
 
+Hallucination behavior
 
-How RAG Is Implemented
+and makes the system easier to debug and reason about.
 
-1. Document Ingestion
-- Extracts text page-wise using PyMuPDF
-- Skips empty or noisy pages
-2. Chunking
-- Fixed-size chunks with overlap
-- Preserves page metadata for traceability
-3. Embeddings
-- Uses local SentenceTransformer embeddings
-- Chosen for cost-efficiency and reliability
-4. Vector Storage
-- FAISS stores dense vectors
-- Metadata stored separately
-5. Retrieval
-- Query is embedded
-- Top-K relevant chunks retrieved via similarity search
-6. Answer Generation
-- Gemini LLM answers strictly using retrieved context
-- Returns fallback if answer is not found in document
+2. Local embeddings instead of hosted embeddings
 
-Hallucination Control
-- The LLM is explicitly instructed to:
-- Use only the retrieved document context
-- Avoid guessing or external knowledge
+Gemini embeddings were initially evaluated.
 
+Due to free-tier quota limitations, the system was intentionally switched to local sentence-transformer embeddings.
 
-▶️ Running the Application
-1️⃣ Install Dependencies
-pip install -r requirements.txt
+Benefits of this approach:
 
-2️⃣ Set Gemini API Key
-GEMINI_API_KEY="your_api_key_here"
+Zero cost
 
-
-(On Windows PowerShell)
-
-setx GEMINI_API_KEY "your_api_key_here"
-
-3️⃣ Start the App
-streamlit run app.py
-
-🧪 Example Use Cases
-
-Ask questions from academic PDFs
-
-Query long reports or documentation
-
-Resume-ready demo for RAG / GenAI interviews
-
-Internal knowledge assistant prototype
-
-⚙️ Design Decisions & Tradeoffs
-
-Local embeddings were used instead of Gemini embeddings due to:
-
-Free-tier quota limitations
-
-Better cost control
+No rate limits
 
 Faster indexing
 
-Architecture is embedding-provider agnostic
+Embedding-provider agnostic architecture
 
-Separation of concerns follows production best practices
+3. Strict hallucination control
+
+The LLM is explicitly instructed to:
+
+Answer only from retrieved document context
+
+Avoid using external or prior knowledge
+
+Return a clear fallback when information is missing
+
+This ensures responses are trustworthy, not just fluent.
+
+4. Metadata-first design
+
+Each chunk retains:
+
+Page number
+
+Chunk ID
+
+Original text
+
+This enables:
+
+Source attribution
+
+Easier debugging
+
+UI transparency
+
+Project structure
+RAG_MINI/
+│
+├── app.py                 # Streamlit entry point
+├── config.py              # Environment-based configuration
+├── requirements.txt
+│
+├── rag/
+│   ├── loader.py          # PDF text extraction
+│   ├── chunker.py         # Overlap-aware chunking
+│   ├── embeddings.py     # Embedding generation
+│   ├── vector_store.py   # FAISS index handling
+│   ├── retriever.py      # Semantic retrieval
+│   └── qa_chain.py       # Gemini-based QA
+│
+├── vector_store/          # Local FAISS index (gitignored)
+└── .gitignore
+
+How RAG works in this project
+
+PDF is parsed page-wise using PyMuPDF
+
+Text is split into overlapping chunks with metadata
+
+Chunks are embedded and stored in FAISS
+
+User query is embedded and matched via similarity search
+
+Top-K chunks are passed as explicit context to Gemini
+
+Gemini generates a grounded answer or a safe fallback
+
+Running locally
+1. Install dependencies
+pip install -r requirements.txt
+
+2. Set API key (via environment variable)
+
+Create a .env file in the project root:
+
+GEMINI_API_KEY=your_api_key_here
+
+
+The .env file is ignored by Git and never committed.
+
+3. Run the application
+streamlit run app.py
+
+What this project demonstrates
+
+End-to-end understanding of RAG systems
+
+Practical handling of LLM limitations and quotas
+
+Clean separation of concerns
+
+Production-style vector search design
+
+Hallucination-aware prompting
